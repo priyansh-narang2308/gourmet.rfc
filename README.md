@@ -2,7 +2,7 @@
 Submissions repository for `ASOC1D` - Recipe Management System
 
 > [!NOTE]
-All discussions regarding `ASOC1E: Recipe Management System` shall take place in https://github.com/orgs/acm-avv/discussions/7.
+All discussions regarding `ASOC1D: Recipe Management System` shall take place in https://github.com/orgs/acm-avv/discussions/7.
 
 ## Overview
 In-order to be eligible to work on this project as **Request for Code** under the banner of **Amrita Summer of Code, 2025**, you are required to form a team of size 1-4 and have all the members register at [amsoc.vercel.app](https://amsoc.vercel.app)
