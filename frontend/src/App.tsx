@@ -55,7 +55,6 @@ const AppRoutes = () => {
             <Route path="/recipes" element={<RecipeManagement />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/alerts" element={<StockAlerts />} />
-            <Route path="/users" element={<UserManagement />} />
           </>
         )}
 

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import axios from "axios";
 import {
   Card,
   CardContent,
@@ -38,188 +39,127 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { recipesData } from "@/data/mockData";
 import StatusBadge from "@/components/shared/StatusBadge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 interface Ingredient {
   name: string;
-  quantity: string;
+  quantity: number;
   unit: string;
-  cost: string;
 }
 
 interface RecipeFormData {
   name: string;
   category: string;
-  servings: string;
-  prepTime: string;
-  cookTime: string;
-  price: string;
-  status: string;
+  servings: number;
+  prepTime: number;
+  cookTime: number;
+  price: number;
+  status: "active" | "inactive";
   ingredients: Ingredient[];
   instructions: string;
-  prepItems: string[];
 }
+
+const initialRecipe: RecipeFormData = {
+  name: "",
+  category: "",
+  servings: 1,
+  prepTime: 0,
+  cookTime: 0,
+  price: 0,
+  status: "active",
+  ingredients: [{ name: "", quantity: 0, unit: "" }],
+  instructions: "",
+};
+
+const API_URL = "http://localhost:5001/api/recipes";
 
 const RecipeManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedRecipe, setSelectedRecipe] = useState<
-    (typeof recipesData)[0] | null
-  >(null);
+  const [selectedRecipe, setSelectedRecipe] = useState<any | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [recipes, setRecipes] = useState(recipesData);
-  const [newRecipe, setNewRecipe] = useState<RecipeFormData>({
-    name: "",
-    category: "",
-    servings: "",
-    prepTime: "",
-    cookTime: "",
-    price: "",
-    status: "active",
-    ingredients: [{ name: "", quantity: "", unit: "", cost: "" }],
-    instructions: "",
-    prepItems: [""],
-  });
+  const [recipes, setRecipes] = useState<any[]>([]);
+  const [newRecipe, setNewRecipe] = useState<RecipeFormData>(initialRecipe);
+  const [ingredientFields, setIngredientFields] = useState<Ingredient[]>([
+    { name: "", quantity: 0, unit: "" },
+  ]);
 
-  const filteredRecipes = recipes.filter(
-    (recipe) =>
-      recipe.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      recipe.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Fetch recipes from backend
+  useEffect(() => {
+    const fetchRecipes = async () => {
+      try {
+        const params: Record<string, string> = {};
+        if (searchTerm) params.search = searchTerm;
+        const res = await axios.get(API_URL, { params });
+        setRecipes(res.data.recipes);
+      } catch (err) {
+        // handle error
+      }
+    };
+    fetchRecipes();
+  }, [searchTerm]);
 
+  // Add new recipe
+  const handleSubmit = async () => {
+    try {
+      const recipeData = {
+        ...newRecipe,
+        ingredients: ingredientFields,
+      };
+      await axios.post(API_URL, recipeData);
+      setIsAddDialogOpen(false);
+      setNewRecipe(initialRecipe);
+      setIngredientFields([{ name: "", quantity: 0, unit: "" }]);
+      // Refresh list
+      const res = await axios.get(API_URL);
+      setRecipes(res.data.recipes);
+    } catch (err) {
+      // handle error
+    }
+  };
+
+  // Delete recipe
+  const handleDeleteRecipe = async (id: string) => {
+    try {
+      await axios.delete(`${API_URL}/${id}`);
+      setRecipes(recipes.filter((r) => r._id !== id));
+    } catch (err) {
+      // handle error
+    }
+  };
+
+  // Ingredient field handlers
   const handleAddIngredient = () => {
-    setNewRecipe({
-      ...newRecipe,
-      ingredients: [
-        ...newRecipe.ingredients,
-        { name: "", quantity: "", unit: "", cost: "" },
-      ],
-    });
+    setIngredientFields([
+      ...ingredientFields,
+      { name: "", quantity: 0, unit: "" },
+    ]);
   };
-
   const handleRemoveIngredient = (index: number) => {
-    const updatedIngredients = [...newRecipe.ingredients];
-    updatedIngredients.splice(index, 1);
-    setNewRecipe({
-      ...newRecipe,
-      ingredients: updatedIngredients,
-    });
+    setIngredientFields(ingredientFields.filter((_, i) => i !== index));
   };
-
   const handleIngredientChange = (
     index: number,
     field: keyof Ingredient,
-    value: string
+    value: string | number
   ) => {
-    const updatedIngredients = [...newRecipe.ingredients];
-    updatedIngredients[index] = {
-      ...updatedIngredients[index],
-      [field]: value,
-    };
-    setNewRecipe({
-      ...newRecipe,
-      ingredients: updatedIngredients,
-    });
+    const updated = [...ingredientFields];
+    if (field === "quantity") {
+      updated[index][field] = Number(value);
+    } else {
+      updated[index][field] = value as string;
+    }
+    setIngredientFields(updated);
   };
 
-  const handleAddPrepItem = () => {
-    setNewRecipe({
-      ...newRecipe,
-      prepItems: [...newRecipe.prepItems, ""],
-    });
-  };
-
-  const handleRemovePrepItem = (index: number) => {
-    const updatedPrepItems = [...newRecipe.prepItems];
-    updatedPrepItems.splice(index, 1);
-    setNewRecipe({
-      ...newRecipe,
-      prepItems: updatedPrepItems,
-    });
-  };
-
-  const handlePrepItemChange = (index: number, value: string) => {
-    const updatedPrepItems = [...newRecipe.prepItems];
-    updatedPrepItems[index] = value;
-    setNewRecipe({
-      ...newRecipe,
-      prepItems: updatedPrepItems,
-    });
-  };
-
-  const calculateTotalCost = () => {
-    return newRecipe.ingredients.reduce((total, ingredient) => {
-      const cost = parseFloat(ingredient.cost) || 0;
-      return total + cost;
-    }, 0);
-  };
-
-  const calculateProfit = () => {
-    const cost = calculateTotalCost();
-    const price = parseFloat(newRecipe.price) || 0;
-    return price - cost;
-  };
-
-  const calculateMargin = () => {
-    const cost = calculateTotalCost();
-    const price = parseFloat(newRecipe.price) || 0;
-    if (price === 0) return 0;
-    return ((price - cost) / price) * 100;
-  };
-
-  const handleSubmit = () => {
-    const totalCost = calculateTotalCost();
-    const profit = calculateProfit();
-    const margin = calculateMargin();
-
-    const newRecipeItem = {
-      id: recipes.length + 1,
-      name: newRecipe.name,
-      category: newRecipe.category,
-      servings: parseInt(newRecipe.servings) || 0,
-      prepTime: newRecipe.prepTime,
-      cookTime: newRecipe.cookTime,
-      cost: totalCost,
-      price: parseFloat(newRecipe.price) || 0,
-      profit: profit,
-      margin: margin,
-      status: newRecipe.status as any,
-      ingredients: newRecipe.ingredients.map((ing) => ({
-        name: ing.name,
-        quantity: parseFloat(ing.quantity) || 0,
-        unit: ing.unit,
-        cost: parseFloat(ing.cost) || 0,
-      })),
-      instructions: newRecipe.instructions,
-      prepItems: newRecipe.prepItems.filter((item) => item.trim() !== ""),
-    };
-
-    setRecipes([...recipes, newRecipeItem]);
-    setIsAddDialogOpen(false);
-
-    // Reset form
-    setNewRecipe({
-      name: "",
-      category: "",
-      servings: "",
-      prepTime: "",
-      cookTime: "",
-      price: "",
-      status: "active",
-      ingredients: [{ name: "", quantity: "", unit: "", cost: "" }],
-      instructions: "",
-      prepItems: [""],
-    });
-  };
+  const filteredRecipes = Array.isArray(recipes)
+    ? recipes.filter(
+        (recipe) =>
+          recipe.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          recipe.category.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : [];
 
   return (
     <div className="space-y-6">
@@ -244,7 +184,6 @@ const RecipeManagement = () => {
                 Fill in the details for your new recipe
               </DialogDescription>
             </DialogHeader>
-
             <div className="grid grid-cols-2 gap-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Recipe Name</Label>
@@ -257,29 +196,17 @@ const RecipeManagement = () => {
                   placeholder="e.g., Margherita Pizza"
                 />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="category">Category</Label>
-                <Select
+                <Input
+                  id="category"
                   value={newRecipe.category}
-                  onValueChange={(value) =>
-                    setNewRecipe({ ...newRecipe, category: value })
+                  onChange={(e) =>
+                    setNewRecipe({ ...newRecipe, category: e.target.value })
                   }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pizza">Pizza</SelectItem>
-                    <SelectItem value="pasta">Pasta</SelectItem>
-                    <SelectItem value="salad">Salad</SelectItem>
-                    <SelectItem value="appetizer">Appetizer</SelectItem>
-                    <SelectItem value="dessert">Dessert</SelectItem>
-                    <SelectItem value="beverage">Beverage</SelectItem>
-                  </SelectContent>
-                </Select>
+                  placeholder="e.g., Pizza"
+                />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="servings">Servings</Label>
                 <Input
@@ -287,12 +214,14 @@ const RecipeManagement = () => {
                   type="number"
                   value={newRecipe.servings}
                   onChange={(e) =>
-                    setNewRecipe({ ...newRecipe, servings: e.target.value })
+                    setNewRecipe({
+                      ...newRecipe,
+                      servings: Number(e.target.value),
+                    })
                   }
                   placeholder="e.g., 4"
                 />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="prepTime">Prep Time (minutes)</Label>
                 <Input
@@ -300,12 +229,14 @@ const RecipeManagement = () => {
                   type="number"
                   value={newRecipe.prepTime}
                   onChange={(e) =>
-                    setNewRecipe({ ...newRecipe, prepTime: e.target.value })
+                    setNewRecipe({
+                      ...newRecipe,
+                      prepTime: Number(e.target.value),
+                    })
                   }
                   placeholder="e.g., 15"
                 />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="cookTime">Cook Time (minutes)</Label>
                 <Input
@@ -313,12 +244,14 @@ const RecipeManagement = () => {
                   type="number"
                   value={newRecipe.cookTime}
                   onChange={(e) =>
-                    setNewRecipe({ ...newRecipe, cookTime: e.target.value })
+                    setNewRecipe({
+                      ...newRecipe,
+                      cookTime: Number(e.target.value),
+                    })
                   }
                   placeholder="e.g., 20"
                 />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="price">Price ($)</Label>
                 <Input
@@ -327,32 +260,32 @@ const RecipeManagement = () => {
                   step="0.01"
                   value={newRecipe.price}
                   onChange={(e) =>
-                    setNewRecipe({ ...newRecipe, price: e.target.value })
+                    setNewRecipe({
+                      ...newRecipe,
+                      price: Number(e.target.value),
+                    })
                   }
                   placeholder="e.g., 12.99"
                 />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
-                <Select
+                <select
+                  id="status"
                   value={newRecipe.status}
-                  onValueChange={(value) =>
-                    setNewRecipe({ ...newRecipe, status: value })
+                  onChange={(e) =>
+                    setNewRecipe({
+                      ...newRecipe,
+                      status: e.target.value as "active" | "inactive",
+                    })
                   }
+                  className="w-full p-2 border rounded"
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                    <SelectItem value="draft">Draft</SelectItem>
-                  </SelectContent>
-                </Select>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
               </div>
             </div>
-
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <Label className="text-lg font-semibold">Ingredients</Label>
@@ -365,9 +298,8 @@ const RecipeManagement = () => {
                   <Plus className="h-4 w-4 mr-1" /> Add Ingredient
                 </Button>
               </div>
-
               <div className="border rounded-lg p-4 space-y-4">
-                {newRecipe.ingredients.map((ingredient, index) => (
+                {ingredientFields.map((ingredient, index) => (
                   <div
                     key={index}
                     className="grid grid-cols-12 gap-2 items-end"
@@ -396,7 +328,7 @@ const RecipeManagement = () => {
                           handleIngredientChange(
                             index,
                             "quantity",
-                            e.target.value
+                            Number(e.target.value)
                           )
                         }
                         placeholder="e.g., 1"
@@ -413,23 +345,8 @@ const RecipeManagement = () => {
                         placeholder="e.g., piece"
                       />
                     </div>
-                    <div className="col-span-3">
-                      <Label htmlFor={`ingredient-cost-${index}`}>
-                        Cost ($)
-                      </Label>
-                      <Input
-                        id={`ingredient-cost-${index}`}
-                        type="number"
-                        step="0.01"
-                        value={ingredient.cost}
-                        onChange={(e) =>
-                          handleIngredientChange(index, "cost", e.target.value)
-                        }
-                        placeholder="e.g., 2.00"
-                      />
-                    </div>
                     <div className="col-span-1">
-                      {newRecipe.ingredients.length > 1 && (
+                      {ingredientFields.length > 1 && (
                         <Button
                           type="button"
                           variant="ghost"
@@ -442,27 +359,8 @@ const RecipeManagement = () => {
                     </div>
                   </div>
                 ))}
-
-                <div className="flex justify-between items-center pt-2">
-                  <div>
-                    <span className="font-medium">
-                      Total Cost: ${calculateTotalCost().toFixed(2)}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="font-medium">
-                      Profit: ${calculateProfit().toFixed(2)}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="font-medium">
-                      Margin: {calculateMargin().toFixed(1)}%
-                    </span>
-                  </div>
-                </div>
               </div>
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="instructions">Instructions</Label>
               <Textarea
@@ -475,47 +373,6 @@ const RecipeManagement = () => {
                 rows={3}
               />
             </div>
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label className="text-lg font-semibold">
-                  Required Prep Items
-                </Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleAddPrepItem}
-                >
-                  <Plus className="h-4 w-4 mr-1" /> Add Item
-                </Button>
-              </div>
-
-              <div className="space-y-2">
-                {newRecipe.prepItems.map((item, index) => (
-                  <div key={index} className="flex gap-2 items-center">
-                    <Input
-                      value={item}
-                      onChange={(e) =>
-                        handlePrepItemChange(index, e.target.value)
-                      }
-                      placeholder="e.g., Pizza Dough"
-                    />
-                    {newRecipe.prepItems.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleRemovePrepItem(index)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
             <DialogFooter>
               <Button
                 type="button"
@@ -531,7 +388,6 @@ const RecipeManagement = () => {
           </DialogContent>
         </Dialog>
       </div>
-
       <Card>
         <CardContent className="pt-6">
           <div className="flex gap-4">
@@ -549,7 +405,6 @@ const RecipeManagement = () => {
           </div>
         </CardContent>
       </Card>
-
       <Card>
         <CardHeader>
           <CardTitle>Recipes ({filteredRecipes.length})</CardTitle>
@@ -563,17 +418,14 @@ const RecipeManagement = () => {
               <TableRow>
                 <TableHead>Recipe</TableHead>
                 <TableHead>Category</TableHead>
-                <TableHead>Cost</TableHead>
                 <TableHead>Price</TableHead>
-                <TableHead>Profit</TableHead>
-                <TableHead>Margin</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredRecipes.map((recipe) => (
-                <TableRow key={recipe.id}>
+                <TableRow key={recipe._id}>
                   <TableCell>
                     <div>
                       <p className="font-medium">{recipe.name}</p>
@@ -587,21 +439,10 @@ const RecipeManagement = () => {
                     <Badge variant="outline">{recipe.category}</Badge>
                   </TableCell>
                   <TableCell className="font-medium">
-                    ${recipe.cost.toFixed(2)}
-                  </TableCell>
-                  <TableCell className="font-medium">
                     ${recipe.price.toFixed(2)}
                   </TableCell>
-                  <TableCell className="font-medium text-success">
-                    ${recipe.profit.toFixed(2)}
-                  </TableCell>
                   <TableCell>
-                    <Badge variant="secondary">
-                      {((recipe.profit / recipe.price) * 100).toFixed(1)}%
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge status={recipe.status as any} />
+                    <StatusBadge status={recipe.status} />
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
@@ -612,10 +453,11 @@ const RecipeManagement = () => {
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteRecipe(recipe._id)}
+                      >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -626,7 +468,6 @@ const RecipeManagement = () => {
           </Table>
         </CardContent>
       </Card>
-
       <Dialog
         open={!!selectedRecipe}
         onOpenChange={() => setSelectedRecipe(null)}
@@ -656,14 +497,13 @@ const RecipeManagement = () => {
                   <p className="text-sm text-muted-foreground">Prep Time</p>
                 </div>
                 <div className="text-center p-4 border rounded-lg">
-                  <DollarSign className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
+                  <Clock className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
                   <p className="text-lg font-semibold">
-                    ${selectedRecipe.cost.toFixed(2)}
+                    {selectedRecipe.cookTime}
                   </p>
-                  <p className="text-sm text-muted-foreground">Cost</p>
+                  <p className="text-sm text-muted-foreground">Cook Time</p>
                 </div>
               </div>
-
               <div>
                 <h3 className="font-semibold mb-3">Ingredients</h3>
                 <div className="border rounded-lg">
@@ -673,40 +513,28 @@ const RecipeManagement = () => {
                         <TableHead>Ingredient</TableHead>
                         <TableHead>Quantity</TableHead>
                         <TableHead>Unit</TableHead>
-                        <TableHead>Cost</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {selectedRecipe.ingredients.map((ingredient, index) => (
-                        <TableRow key={index}>
-                          <TableCell className="font-medium">
-                            {ingredient.name}
-                          </TableCell>
-                          <TableCell>{ingredient.quantity}</TableCell>
-                          <TableCell>{ingredient.unit}</TableCell>
-                          <TableCell>${ingredient.cost.toFixed(2)}</TableCell>
-                        </TableRow>
-                      ))}
+                      {selectedRecipe.ingredients.map(
+                        (ingredient: Ingredient, index: number) => (
+                          <TableRow key={index}>
+                            <TableCell className="font-medium">
+                              {ingredient.name}
+                            </TableCell>
+                            <TableCell>{ingredient.quantity}</TableCell>
+                            <TableCell>{ingredient.unit}</TableCell>
+                          </TableRow>
+                        )
+                      )}
                     </TableBody>
                   </Table>
                 </div>
               </div>
-
               <div>
                 <h3 className="font-semibold mb-3">Instructions</h3>
                 <div className="p-4 bg-muted rounded-lg">
                   <p>{selectedRecipe.instructions}</p>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="font-semibold mb-3">Required Prep Items</h3>
-                <div className="flex gap-2">
-                  {selectedRecipe.prepItems.map((item, index) => (
-                    <Badge key={index} variant="outline">
-                      {item}
-                    </Badge>
-                  ))}
                 </div>
               </div>
             </div>

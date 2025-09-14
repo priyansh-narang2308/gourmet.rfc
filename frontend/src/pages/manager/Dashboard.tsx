@@ -58,12 +58,7 @@ const Dashboard = () => {
             Welcome back! Here's what's happening today.
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button className="bg-gradient-primary">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Recipe
-          </Button>
-        </div>
+
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

@@ -35,7 +35,6 @@ const getSidebarItems = (role: string) => {
         { icon: ChefHat, label: "Recipe Management", path: "/recipes" },
         { icon: FileText, label: "Reports & Analytics", path: "/reports" },
         { icon: AlertTriangle, label: "Stock Alerts", path: "/alerts" },
-        { icon: Users, label: "User Management", path: "/users" },
       ];
     case "Kitchen Staff":
       return [

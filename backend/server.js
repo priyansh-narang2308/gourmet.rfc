@@ -23,7 +23,7 @@ mongoose
   .then(() => console.log("MongoDB connected"))
   .catch((err) => console.error("MongoDB connection error:", err));
 
-// app.use("/api/recipes", require("./routes/recipeRoutes"));
+app.use("/api/recipes", require("./routes/recipeRoutes"));
 // app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/auth", require("./routes/authRoutes"));
 
