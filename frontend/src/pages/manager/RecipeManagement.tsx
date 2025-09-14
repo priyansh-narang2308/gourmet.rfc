@@ -85,6 +85,11 @@ const RecipeManagement = () => {
     { name: "", quantity: 0, unit: "" },
   ]);
 
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem("token");
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+
   // Fetch recipes from backend
   useEffect(() => {
     const fetchRecipes = async () => {
@@ -104,10 +109,17 @@ const RecipeManagement = () => {
   const handleSubmit = async () => {
     try {
       const recipeData = {
-        ...newRecipe,
+        name: newRecipe.name,
+        category: newRecipe.category,
+        servings: newRecipe.servings,
+        prepTime: newRecipe.prepTime,
+        cookTime: newRecipe.cookTime,
+        instructions: newRecipe.instructions,
+        price: newRecipe.price,
+        status: newRecipe.status,
         ingredients: ingredientFields,
       };
-      await axios.post(API_URL, recipeData);
+      await axios.post(API_URL, recipeData, { headers: getAuthHeaders() });
       setIsAddDialogOpen(false);
       setNewRecipe(initialRecipe);
       setIngredientFields([{ name: "", quantity: 0, unit: "" }]);
@@ -122,8 +134,28 @@ const RecipeManagement = () => {
   // Delete recipe
   const handleDeleteRecipe = async (id: string) => {
     try {
-      await axios.delete(`${API_URL}/${id}`);
+      await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
       setRecipes(recipes.filter((r) => r._id !== id));
+    } catch (err) {
+      // handle error
+    }
+  };
+
+  // Update recipe
+  const handleUpdateRecipe = async () => {
+    if (!selectedRecipe) return;
+    try {
+      const recipeData = {
+        ...selectedRecipe,
+        ingredients: selectedRecipe.ingredients,
+      };
+      await axios.put(`${API_URL}/${selectedRecipe._id}`, recipeData, {
+        headers: getAuthHeaders(),
+      });
+      setSelectedRecipe(null);
+      // Refresh list
+      const res = await axios.get(API_URL);
+      setRecipes(res.data.recipes);
     } catch (err) {
       // handle error
     }

@@ -54,7 +54,7 @@ exports.getRecipe = async (req, res) => {
 exports.createRecipe = async (req, res) => {
   try {
     // Only manager can create
-    if (req.user.role !== "manager")
+    if (req.user.role !== "manager" && req.user.role !== "Restaurant Manager")
       return res.status(403).json({ message: "Forbidden" });
     const {
       name,
@@ -76,6 +76,7 @@ exports.createRecipe = async (req, res) => {
       instructions,
       price,
       status,
+      cost: 0, // Set initial cost to 0
       createdBy: req.user._id,
     });
     await recipe.save();
@@ -89,6 +90,7 @@ exports.createRecipe = async (req, res) => {
         });
       }
     }
+    // Calculate cost and profit
     recipe.cost = await calculateCost(recipe._id);
     await recipe.save();
     res.status(201).json({ recipe });
